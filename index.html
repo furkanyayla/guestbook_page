@@ -94,8 +94,8 @@
             const articleTitle = urlParams.get('title');
             
             if (articleRef && articleTitle) {
-                document.getElementById('messageField').value = `Re: ${articleTitle} - `;
-}
+                document.getElementById('message').value = `Re: ${articleTitle} - `;
+            }
             
             button.disabled = true;
             status.textContent = 'Sending...';
