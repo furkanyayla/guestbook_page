@@ -89,6 +89,13 @@
             
             const status = document.getElementById('status');
             const button = e.target.querySelector('button');
+            const urlParams = new URLSearchParams(window.location.search);
+            const articleRef = urlParams.get('ref');
+            const articleTitle = urlParams.get('title');
+            
+            if (articleRef && articleTitle) {
+                document.getElementById('messageField').value = `Re: ${articleTitle} - `;
+}
             
             button.disabled = true;
             status.textContent = 'Sending...';
