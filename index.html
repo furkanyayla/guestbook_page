@@ -11,6 +11,11 @@
             box-sizing: border-box;
         }
         
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
         body {
             font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
             background: #c0c0c0;
@@ -23,6 +28,7 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
+            height: 100%;
         }
         
         .input-row {
@@ -31,11 +37,21 @@
             gap: 8px;
         }
         
+        .input-row.message-row {
+            flex: 1;
+            align-items: stretch;
+        }
+        
         label {
             font-weight: bold;
             color: #000;
             min-width: 55px;
             font-size: 12px;
+        }
+        
+        .message-row label {
+            align-self: flex-start;
+            margin-top: 4px;
         }
         
         input, textarea {
@@ -55,7 +71,8 @@
         
         textarea {
             resize: none;
-            height: 50px;
+            height: 100%;
+            min-height: 40px;
         }
         
         .button-row {
@@ -63,7 +80,6 @@
             justify-content: flex-end;
             align-items: center;
             gap: 8px;
-            margin-top: 2px;
         }
         
         button {
@@ -105,24 +121,56 @@
             color: #cc0000;
         }
         
+        /* Article Reference Notice */
         .article-ref-notice {
-            background: #ffffcc;
-            border: 1px dashed #b8860b;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: #fffacd;
+            border: 1px solid #b8860b;
             padding: 4px 8px;
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 4px;
+            font-size: 11px;
         }
         
-        .article-ref-notice strong {
+        .article-ref-notice.visible {
+            display: flex;
+        }
+        
+        .article-ref-icon {
+            flex-shrink: 0;
+        }
+        
+        .article-ref-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .article-ref-text strong {
             color: #b8860b;
+        }
+        
+        .article-ref-title {
+            color: #000080;
+        }
+        
+        .article-ref-remove {
+            padding: 2px 6px;
+            min-width: auto;
+            font-size: 10px;
+            font-weight: normal;
         }
     </style>
 </head>
 <body>
     <form id="guestForm" class="form-container">
-        <div id="articleRefNotice" class="article-ref-notice" style="display: none;">
-            <strong>💬 Replying to:</strong> <span id="articleRefTitle"></span>
+        <div id="articleRefNotice" class="article-ref-notice">
+            <span class="article-ref-icon">💬</span>
+            <span class="article-ref-text">
+                <strong>Replying to:</strong> <span id="articleRefTitle" class="article-ref-title"></span>
+            </span>
+            <button type="button" class="article-ref-remove" id="removeRefBtn" title="Remove reference">✕</button>
         </div>
         
         <div class="input-row">
@@ -130,8 +178,8 @@
             <input type="text" id="name" required maxlength="50" placeholder="Your name">
         </div>
         
-        <div class="input-row" style="align-items: flex-start;">
-            <label for="message" style="margin-top: 4px;">Message:</label>
+        <div class="input-row message-row">
+            <label for="message">Message:</label>
             <textarea id="message" required maxlength="500" placeholder="Type your message here..."></textarea>
         </div>
         
@@ -142,33 +190,39 @@
     </form>
 
     <script>
-        // Autofill on page load
+        // Store article reference data
+        let articleReference = null;
+        
+        // Autofill on page load (for article references)
         window.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const articleRef = urlParams.get('ref');
             const articleTitle = urlParams.get('title');
             
-            console.log('Page loaded');
-            console.log('Article ref:', articleRef);
-            console.log('Article title:', articleTitle);
-            
             if (articleRef && articleTitle) {
-                const messageField = document.getElementById('message');
+                const articleUrl = `https://human-fun.neocities.org/article?id=${articleRef}`;
+                
+                // Store the reference data
+                articleReference = {
+                    title: articleTitle,
+                    url: articleUrl
+                };
+                
+                // Show the notice
                 const noticeDiv = document.getElementById('articleRefNotice');
                 const titleSpan = document.getElementById('articleRefTitle');
                 
-                if (messageField) {
-                    const articleUrl = `https://human-fun.neocities.org/article?id=${articleRef}`;
-                    messageField.value = `Re: ${articleTitle} (${articleUrl})\n----(pls do not delete the line above if you're referring to an article thank you)----\n`;
-                    console.log('Prefilled message field');
-                }
-                
-                // Show the article reference notice
                 if (noticeDiv && titleSpan) {
                     titleSpan.textContent = articleTitle;
-                    noticeDiv.style.display = 'block';
+                    noticeDiv.classList.add('visible');
                 }
             }
+        });
+        
+        // Remove reference button handler
+        document.getElementById('removeRefBtn').addEventListener('click', function() {
+            articleReference = null;
+            document.getElementById('articleRefNotice').classList.remove('visible');
         });
 
         // Form submission handler
@@ -176,15 +230,23 @@
             e.preventDefault();
             
             const status = document.getElementById('status');
-            const button = e.target.querySelector('button');
+            const button = e.target.querySelector('button[type="submit"]');
             
             button.disabled = true;
             status.textContent = 'Sending...';
             status.className = '';
             
+            // Build the message - concatenate article reference if it exists
+            let message = document.getElementById('message').value;
+            
+            if (articleReference) {
+                const refPrefix = `Re: ${articleReference.title} (${articleReference.url})\n----(pls do not delete the line above if you're referring to an article thank you)----\n`;
+                message = refPrefix + message;
+            }
+            
             const data = {
                 name: document.getElementById('name').value,
-                message: document.getElementById('message').value
+                message: message
             };
             
             try {
@@ -197,17 +259,15 @@
                     }
                 });
                 
-                // With no-cors, response.type will be "opaque" and status will be 0
-                // But if we got here without throwing, the request was sent
                 status.textContent = '✓ Signed!';
                 status.className = 'success';
                 document.getElementById('guestForm').reset();
                 
-                // Hide article reference notice after successful submit
-                document.getElementById('articleRefNotice').style.display = 'none';
+                // Clear and hide article reference after successful submit
+                articleReference = null;
+                document.getElementById('articleRefNotice').classList.remove('visible');
                 
             } catch(error) {
-                // Now this only triggers on actual network errors
                 status.textContent = '✗ Failed. Try again.';
                 status.className = 'error';
             } finally {
